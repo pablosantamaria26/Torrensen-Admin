@@ -11,6 +11,7 @@
 <title>Torrensen · Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
 :root{--red:#D42B2B;--red-d:#A01F1F;--red-glow:rgba(212,43,43,0.12);--bg:#0A0A0A;--bg2:#111;--bg3:#181818;--bg4:#1E1E1E;--bg5:#242424;--border:rgba(255,255,255,0.06);--border-m:rgba(255,255,255,0.1);--border-red:rgba(212,43,43,0.35);--text:#F2F2F2;--muted:#A0A0A0;--dim:#6B6B6B;--green:#22C55E;--yellow:#D97706;--fluo:#BFFF00;--sidebar:252px;--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px)}
 html.light{--bg:#F5F5F5;--bg2:#FFF;--bg3:#ECECEC;--bg4:#E0E0E0;--bg5:#D4D4D4;--border:rgba(0,0,0,0.08);--border-m:rgba(0,0,0,0.12);--border-red:rgba(212,43,43,0.3);--text:#1A1A1A;--muted:#666;--dim:#999;--red-glow:rgba(212,43,43,0.08);color-scheme:light}
@@ -100,6 +101,11 @@ input,select,textarea,button{font-family:inherit}
 const SUPA_URL='https://zfqnvdhaqdgeruientrv.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmcW52ZGhhcWRnZXJ1aWVudHJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNDc1NzksImV4cCI6MjA4ODkyMzU3OX0.ATrHQzpkA-N3z2IXRazVmFW9AxjS1wjWA4kjKh6pvTE';
 const ADMIN_PIN='200622',ADMIN_EMAIL='distribuidoramercadolimpio@gmail.com',ADMIN_PASS='200622';
+// ── EmailJS Config (completar con tus IDs de emailjs.com) ──
+const EMAILJS_PUBLIC_KEY = 'lrqp8-7N-j_WDslMe';
+const EMAILJS_SERVICE    = 'service_71obf84';
+const EMAILJS_TEMPLATE_CONFIRM = 'template_dxsnhl7';
+emailjs.init(EMAILJS_PUBLIC_KEY);
 const{createClient}=supabase;const db=createClient(SUPA_URL,SUPA_KEY);
 let allProds=[],adminOrders=[],adminProfiles=[],editingProdId=null,pinInput='',adminStockSearch='',rtSetupDone=false,longPressTimer=null;
 
@@ -177,27 +183,21 @@ async function confirmOrd(id){
   if(error){toast('Error',true);return}
   const i=adminOrders.findIndex(o=>o.id===id);if(i!==-1)adminOrders[i].status='confirmed';
   updPendingBdg();renderOrders();toast('Pedido confirmado');
-  // Send confirmation email to distributor
+  // Send confirmation email via EmailJS
   const order=adminOrders.find(o=>o.id===id);if(!order)return;
   const distProfile=order.profiles;if(!distProfile)return;
-  // Get distributor email from auth
   const{data:prof}=await db.from('profiles').select('*').eq('id',order.user_id).single();
-  if(!prof)return;
-  // Get user email from auth metadata or use the profile
+  if(!prof?.email){console.warn('No email for distributor');return}
   try{
-    const{data:{session}}=await db.auth.getSession();
-    await fetch(SUPA_URL+'/functions/v1/send-order-email',{
-      method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
-      body:JSON.stringify({
-        type:'confirmation',
-        order_number:order.order_number,
-        distribuidor_empresa:distProfile.empresa||'',
-        distribuidor_nombre:distProfile.nombre||'',
-        distribuidor_email:prof.email||distProfile.email||'',
-        total:order.total_usd
-      })
+    await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE_CONFIRM, {
+      to_email: prof.email,
+      to_name: distProfile.nombre || distProfile.empresa || 'Distribuidor',
+      order_number: order.order_number || 'OP',
+      empresa: distProfile.empresa || '',
+      total: 'USD ' + Number(order.total_usd||0).toLocaleString(),
     });
-  }catch(e){console.warn('Email send failed:',e)}
+    toast('Email de confirmación enviado');
+  }catch(e){console.warn('EmailJS failed:',e);toast('Pedido confirmado (email falló)',true)}
 }
 function startLP(id,num){longPressTimer=setTimeout(()=>{showConfirm('¿Eliminar pedido '+num+'?',()=>deleteOrd(id))},1500)}
 function cancelLP(){if(longPressTimer){clearTimeout(longPressTimer);longPressTimer=null}}
