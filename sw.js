@@ -1,4 +1,4 @@
-const CACHE_NAME = 'torrensen-admin-v7';
+const CACHE_NAME = 'torrensen-admin-v8';
 
 self.addEventListener('install', e => {
   self.skipWaiting();
@@ -13,10 +13,15 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  // Don't intercept non-GET or external API calls
+  if (e.request.method !== 'GET' || e.request.url.includes('emailjs.com') || e.request.url.includes('supabase.co')) {
+    return;
+  }
+  // Network-first for GET requests only
   e.respondWith(
     fetch(e.request)
       .then(res => {
-        if (e.request.method === 'GET' && res.status === 200) {
+        if (res.status === 200) {
           const clone = res.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
         }
