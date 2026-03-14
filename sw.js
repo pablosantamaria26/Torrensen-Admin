@@ -1,4 +1,4 @@
-const CACHE_NAME = 'torrensen-admin-v6';
+const CACHE_NAME = 'torrensen-admin-v7';
 
 self.addEventListener('install', e => {
   self.skipWaiting();
