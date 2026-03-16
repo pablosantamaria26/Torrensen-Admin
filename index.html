@@ -43,8 +43,6 @@ input,select,textarea,button{font-family:inherit}
 .pin-wrap{width:100%;max-width:320px;display:flex;flex-direction:column;align-items:center;gap:20px}
 .pin-logo{text-align:center;font-family:'Bebas Neue',cursive;font-size:36px;letter-spacing:5px;line-height:1}.pin-logo em{color:var(--red);font-style:normal}.pin-logo small{display:block;font-family:'DM Sans',sans-serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--dim);margin-top:5px}
 .pin-title{font-family:'Bebas Neue',cursive;font-size:28px;letter-spacing:1px}.pin-title em{color:var(--red);font-style:normal}
-.pin-dots{display:flex;gap:10px}.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--border-m);background:none;transition:all .15s}.pin-dot.filled{background:var(--red);border-color:var(--red)}.pin-dot.err{border-color:#ff4444;background:#ff4444;animation:shake .4s}
-.pin-pad{display:grid;grid-template-columns:repeat(3,72px);gap:10px;justify-content:center}.pin-key{width:72px;height:56px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-family:'Bebas Neue',cursive;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s}.pin-key:hover{border-color:var(--red);background:var(--red-glow)}.pin-key:active{transform:scale(.93);background:var(--red);color:#fff}.pin-key.fn{font-size:14px;font-family:'DM Sans',sans-serif;color:var(--muted)}
 #app{display:none;min-height:100dvh}
 #sidebar{width:var(--sidebar);background:var(--bg2);border-right:1px solid var(--border);position:fixed;top:0;left:0;bottom:0;z-index:100;overflow-y:auto;display:flex;flex-direction:column;padding-top:var(--safe-top);transition:transform .26s cubic-bezier(.32,.72,0,1)}
 .sidebar-logo{padding:24px 20px 16px;border-bottom:1px solid var(--border)}.sidebar-logo .brand{font-family:'Bebas Neue',cursive;font-size:26px;letter-spacing:2px;line-height:1}.sidebar-logo .brand em{color:var(--red);font-style:normal}.sidebar-logo .sub{font-size:9px;letter-spacing:3px;color:var(--dim);text-transform:uppercase;margin-top:3px}
@@ -99,7 +97,20 @@ input,select,textarea,button{font-family:inherit}
 <body>
 <div id="loader"><div class="loader-logo">TOR<em>REN</em>SEN</div><div class="loader-track"><div class="loader-fill"></div></div></div>
 <div id="loading-app"><div class="la-logo">TOR<em>REN</em>SEN</div><div class="la-spinner"></div><div class="la-text">Cargando datos...</div></div>
-<div id="pin-screen"><div class="pin-wrap"><div class="pin-logo">TOR<em>REN</em>SEN<small>Acceso Administración</small></div><div class="pin-title">Ingresá tu <em>PIN</em></div><div class="pin-dots" id="pin-dots"><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div></div><div class="pin-pad"><button class="pin-key" onclick="pinKey('1')">1</button><button class="pin-key" onclick="pinKey('2')">2</button><button class="pin-key" onclick="pinKey('3')">3</button><button class="pin-key" onclick="pinKey('4')">4</button><button class="pin-key" onclick="pinKey('5')">5</button><button class="pin-key" onclick="pinKey('6')">6</button><button class="pin-key" onclick="pinKey('7')">7</button><button class="pin-key" onclick="pinKey('8')">8</button><button class="pin-key" onclick="pinKey('9')">9</button><button class="pin-key fn" onclick="pinClear()">Borrar</button><button class="pin-key" onclick="pinKey('0')">0</button><button class="pin-key fn" onclick="pinDel()">⌫</button></div></div></div>
+<div id="pin-screen">
+  <div class="pin-wrap">
+    <div class="pin-logo">TOR<em>REN</em>SEN<small>Acceso Administración</small></div>
+    <div class="pin-title">Ingresá tu <em>PIN</em></div>
+    <input type="tel" id="pin-input" maxlength="6" placeholder="· · · · · ·" autocomplete="off"
+      style="width:200px;height:52px;background:var(--bg4);border:2px solid var(--border-m);border-radius:12px;color:var(--text);font-family:'Bebas Neue',cursive;font-size:28px;text-align:center;letter-spacing:8px;outline:none;-webkit-text-security:disc;margin:0 auto;display:block"
+      oninput="onPinInput(this)" onfocus="this.style.borderColor='var(--red)'" onblur="this.style.borderColor='var(--border-m)'">
+    <div id="pin-err" style="color:#D42B2B;font-size:11px;text-align:center;min-height:16px"></div>
+    <button id="pin-btn" onclick="validatePin()" disabled
+      style="width:200px;height:44px;background:var(--red);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;margin:0 auto;display:block;opacity:.4;transition:opacity .2s">
+      Ingresar →
+    </button>
+  </div>
+</div>
 <div id="app"><nav id="sidebar"><div class="sidebar-logo"><div class="brand">TOR<em>REN</em>SEN</div><div class="sub">Administración</div></div><div style="padding:10px 0;flex:1" id="sidebar-nav"></div><div class="sidebar-foot" id="side-foot"></div></nav><div id="main"><div id="topbar"><div class="topbar-inner"><button class="menu-btn" onclick="toggleSidebar()">☰</button><div class="search-box"><span style="color:var(--dim);font-size:13px">🔍</span><input type="text" placeholder="Buscar producto..." id="search-inp"></div><div class="topbar-right"></div></div></div><div id="content"></div></div></div>
 <div class="overlay" id="od-overlay" onclick="if(event.target===this)closeOverlay('od-overlay')"><div class="modal"><div class="modal-hdr"><div class="modal-ttl" id="od-title"></div><button class="btn-x" onclick="closeOverlay('od-overlay')">✕</button></div><div class="modal-body" id="od-body"></div></div></div>
 <div class="overlay" id="pe-overlay" onclick="if(event.target===this)closeOverlay('pe-overlay')"><div class="modal" style="max-width:500px"><div class="modal-hdr"><div class="modal-ttl" id="pe-title">EDITAR</div><button class="btn-x" onclick="closeOverlay('pe-overlay')">✕</button></div><div class="modal-body" id="pe-body"></div></div></div>
@@ -116,35 +127,68 @@ const EMAILJS_SERVICE    = 'service_71obf84';
 const EMAILJS_TEMPLATE_CONFIRM = 'template_dxsnhl7';
 emailjs.init(EMAILJS_PUBLIC_KEY);
 const{createClient}=supabase;const db=createClient(SUPA_URL,SUPA_KEY);
-let allProds=[],adminOrders=[],adminProfiles=[],editingProdId=null,pinInput='',adminStockSearch='',rtSetupDone=false,longPressTimer=null;
+let allProds=[],adminOrders=[],adminProfiles=[],editingProdId=null,adminStockSearch='',rtSetupDone=false,longPressTimer=null;
 
 async function init(){
-  if(localStorage.getItem('torrensen_admin_auth')==='1'){
-    document.getElementById('loader').style.display='none';
-    const la=document.getElementById('loading-app');la.classList.add('show');
-    let{data:{session}}=await db.auth.getSession();
-    if(!session){const{error}=await db.auth.signInWithPassword({email:ADMIN_EMAIL,password:ADMIN_PASS});if(error){la.classList.remove('show');showPinScreen();return}}
-    la.querySelector('.la-text').textContent='Sincronizando stock...';
-    await loadProds();
-    la.querySelector('.la-text').textContent='Cargando pedidos...';
-    await loadAdminData();setupRt();
-    la.querySelector('.la-text').textContent='Listo';
-    setTimeout(()=>{la.classList.remove('show');enterApp()},300);
-    return;
+  try{
+    if(localStorage.getItem('torrensen_admin_auth')==='1'){
+      document.getElementById('loader').style.display='none';
+      const la=document.getElementById('loading-app');la.classList.add('show');
+      let{data:{session}}=await db.auth.getSession();
+      if(!session){
+        la.querySelector('.la-text').textContent='Reconectando...';
+        const{error}=await db.auth.signInWithPassword({email:ADMIN_EMAIL,password:ADMIN_PASS});
+        if(error){la.classList.remove('show');localStorage.removeItem('torrensen_admin_auth');showPinScreen();return}
+      }
+      la.querySelector('.la-text').textContent='Sincronizando stock...';
+      await loadProds();
+      la.querySelector('.la-text').textContent='Cargando pedidos...';
+      await loadAdminData();setupRt();
+      la.querySelector('.la-text').textContent='Listo';
+      setTimeout(()=>{la.classList.remove('show');enterApp()},300);
+      return;
+    }
+  }catch(e){
+    console.error('Init error:',e);
+    document.getElementById('loading-app').classList.remove('show');
+    localStorage.removeItem('torrensen_admin_auth');
   }
   showPinScreen();
 }
-function showPinScreen(){document.getElementById('loader').style.display='none';document.getElementById('pin-screen').style.display='flex';pinInput='';updatePinDots()}
-function pinKey(n){if(pinInput.length>=6)return;pinInput+=n;updatePinDots();if(pinInput.length===6)setTimeout(validatePin,150)}
-function pinDel(){pinInput=pinInput.slice(0,-1);updatePinDots()}
-function pinClear(){pinInput='';updatePinDots()}
-function updatePinDots(){document.querySelectorAll('#pin-dots .pin-dot').forEach((d,i)=>{d.classList.toggle('filled',i<pinInput.length);d.classList.remove('err')})}
+function showPinScreen(){
+  document.getElementById('loader').style.display='none';
+  document.getElementById('loading-app').classList.remove('show');
+  document.getElementById('pin-screen').style.display='flex';
+  const inp=document.getElementById('pin-input');
+  inp.value='';
+  document.getElementById('pin-err').textContent='';
+  document.getElementById('pin-btn').disabled=true;
+  document.getElementById('pin-btn').style.opacity='.4';
+  setTimeout(()=>inp.focus(),300);
+}
+function onPinInput(el){
+  el.value=el.value.replace(/\D/g,'').slice(0,6);
+  const ok=el.value.length===6;
+  document.getElementById('pin-btn').disabled=!ok;
+  document.getElementById('pin-btn').style.opacity=ok?'1':'.4';
+  document.getElementById('pin-err').textContent='';
+  if(ok)setTimeout(validatePin,100);
+}
 async function validatePin(){
-  if(pinInput===ADMIN_PIN){
-    document.getElementById('pin-screen').style.display='none';
-    const la=document.getElementById('loading-app');la.classList.add('show');
+  const pin=document.getElementById('pin-input').value;
+  if(pin!==ADMIN_PIN){
+    document.getElementById('pin-err').textContent='PIN incorrecto';
+    document.getElementById('pin-input').value='';
+    document.getElementById('pin-btn').disabled=true;
+    document.getElementById('pin-btn').style.opacity='.4';
+    return;
+  }
+  document.getElementById('pin-screen').style.display='none';
+  const la=document.getElementById('loading-app');la.classList.add('show');
+  la.querySelector('.la-text').textContent='Autenticando...';
+  try{
     const{error}=await db.auth.signInWithPassword({email:ADMIN_EMAIL,password:ADMIN_PASS});
-    if(error){la.classList.remove('show');toast('Error autenticación',true);showPinScreen();return}
+    if(error){la.classList.remove('show');toast('Error de autenticación: '+error.message,true);showPinScreen();return}
     localStorage.setItem('torrensen_admin_auth','1');
     la.querySelector('.la-text').textContent='Sincronizando stock...';
     await loadProds();
@@ -153,7 +197,12 @@ async function validatePin(){
     setupRt();
     la.querySelector('.la-text').textContent='Listo';
     setTimeout(()=>{la.classList.remove('show');enterApp()},400);
-  }else{document.querySelectorAll('#pin-dots .pin-dot').forEach(d=>d.classList.add('err'));setTimeout(()=>{pinInput='';updatePinDots()},500)}
+  }catch(e){
+    console.error('Init error:',e);
+    la.classList.remove('show');
+    toast('Error al cargar',true);
+    showPinScreen();
+  }
 }
 let curSection='stock-live';
 function enterApp(){
