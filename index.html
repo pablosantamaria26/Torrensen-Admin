@@ -12,6 +12,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
 :root{--red:#D42B2B;--red-d:#A01F1F;--red-glow:rgba(212,43,43,0.08);--bg:#F5F5F5;--bg2:#FFF;--bg3:#ECECEC;--bg4:#E0E0E0;--bg5:#D4D4D4;--border:rgba(0,0,0,0.08);--border-m:rgba(0,0,0,0.12);--border-red:rgba(212,43,43,0.3);--text:#1A1A1A;--muted:#666;--dim:#999;--green:#22C55E;--yellow:#D97706;--fluo:#16A34A;--sidebar:252px;--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
 .loader-logo,.brand{color:var(--text)}
@@ -201,9 +203,72 @@ async function deleteOrd(id){await db.from('order_items').delete().eq('order_id'
 async function openOrderDetail(id){
   const o=adminOrders.find(x=>x.id===id);if(!o)return;
   const{data:items}=await db.from('order_items').select('*').eq('order_id',id);
+  // Store for PDF
+  window._lastDetailOrder={order:o,items:items||[]};
   document.getElementById('od-title').textContent=o.order_number||'—';
-  document.getElementById('od-body').innerHTML=`<div style="margin-bottom:14px"><div style="font-size:9px;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px">Distribuidor</div><div style="font-size:15px;font-weight:700">${o.profiles?.empresa||'—'}</div><div style="font-size:11px;color:var(--muted)">${o.profiles?.nombre||''} · CUIT: ${o.profiles?.cuit||'—'}</div><div style="margin-top:6px"><span class="bdg ${o.status==='pending'?'bdg-y':'bdg-g'}">${o.status==='pending'?'Pendiente':'Confirmado'}</span> <span style="font-family:'Bebas Neue';font-size:18px;color:var(--red);margin-left:8px">USD ${Number(o.total_usd||0).toLocaleString()}</span></div></div><div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:8px">Ítems</div>${(items||[]).map(it=>`<div style="background:var(--bg3);border-radius:7px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px"><div style="flex:1"><div style="font-weight:600;font-size:12px">${it.product_name}</div><div style="font-size:9px;color:var(--dim)">${it.product_brand}</div></div><div style="font-family:'Bebas Neue';font-size:18px;color:var(--muted)">${it.quantity}u</div><div style="font-family:'Bebas Neue';font-size:14px">USD ${Number(it.subtotal||it.unit_price*it.quantity).toLocaleString()}</div></div>`).join('')}${o.status==='pending'?`<button class="btn-sm btn-sm-g" style="width:100%;height:40px;margin-top:12px;font-size:13px" onclick="confirmOrd('${o.id}');closeOverlay('od-overlay')">✓ Confirmar recepción</button>`:''}`;
+  document.getElementById('od-body').innerHTML=`<div style="margin-bottom:14px"><div style="font-size:9px;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px">Distribuidor</div><div style="font-size:15px;font-weight:700">${o.profiles?.empresa||'—'}</div><div style="font-size:11px;color:var(--muted)">${o.profiles?.nombre||''} · CUIT: ${o.profiles?.cuit||'—'}</div><div style="margin-top:6px"><span class="bdg ${o.status==='pending'?'bdg-y':'bdg-g'}">${o.status==='pending'?'Pendiente':'Confirmado'}</span> <span style="font-family:'Bebas Neue';font-size:18px;color:var(--red);margin-left:8px">USD ${Number(o.total_usd||0).toLocaleString()}</span></div></div><div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:8px">Ítems</div>${(items||[]).map(it=>`<div style="background:var(--bg3);border-radius:7px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px"><div style="flex:1"><div style="font-weight:600;font-size:12px">${it.product_name}</div><div style="font-size:9px;color:var(--dim)">${it.product_brand}</div></div><div style="font-family:'Bebas Neue';font-size:18px;color:var(--muted)">${it.quantity}u</div><div style="font-family:'Bebas Neue';font-size:14px">USD ${Number(it.subtotal||it.unit_price*it.quantity).toLocaleString()}</div></div>`).join('')}<div style="display:flex;gap:8px;margin-top:14px">${o.status==='pending'?`<button class="btn-sm btn-sm-g" style="flex:1;height:40px;font-size:13px" onclick="confirmOrd('${o.id}');closeOverlay('od-overlay')">✓ Confirmar</button>`:''}<button class="btn-sm btn-sm-r" style="flex:1;height:40px;font-size:13px" onclick="downloadOrderPDF()">📄 Descargar PDF</button></div>`;
   document.getElementById('od-overlay').classList.add('open');
+}
+function downloadOrderPDF(){
+  const d=window._lastDetailOrder;if(!d)return;
+  const{jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  const W=210,o=d.order,items=d.items,prof=o.profiles||{};
+  const fecha=new Date(o.created_at).toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'});
+  // Header
+  doc.setFillColor(212,43,43);doc.rect(0,0,W,44,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(28);doc.setTextColor(255,255,255);
+  doc.text('TORRENSEN',20,22);
+  doc.setFontSize(8);doc.setTextColor(255,200,200);
+  doc.text('ORDEN DE PEDIDO',20,30);
+  doc.setFontSize(20);doc.setTextColor(255,255,255);
+  doc.text(o.order_number||'OP',W-20,22,{align:'right'});
+  doc.setFontSize(9);doc.setTextColor(255,200,200);
+  doc.text(fecha,W-20,30,{align:'right'});
+  // Client
+  const cy=52;
+  doc.setFillColor(248,248,248);doc.roundedRect(15,cy,W-30,26,3,3,'F');
+  doc.setDrawColor(220,220,220);doc.roundedRect(15,cy,W-30,26,3,3,'S');
+  doc.setFontSize(7);doc.setTextColor(150,150,150);doc.setFont('helvetica','bold');
+  doc.text('DISTRIBUIDOR',20,cy+6);
+  doc.setFontSize(14);doc.setTextColor(30,30,30);
+  doc.text(prof.empresa||'—',20,cy+15);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);
+  doc.text('Titular: '+(prof.nombre||'—'),20,cy+21);
+  doc.text('CUIT: '+(prof.cuit||'—'),120,cy+21);
+  // Items
+  const ty=84;
+  doc.setFontSize(7);doc.setTextColor(150,150,150);doc.setFont('helvetica','bold');
+  const totalU=items.reduce((s,i)=>s+i.quantity,0);
+  doc.text('DETALLE DEL PEDIDO · '+totalU+' UNIDADES',20,ty);
+  doc.autoTable({startY:ty+4,
+    head:[['PRODUCTO','MARCA','CANT.','P.UNIT.','SUBTOTAL']],
+    body:items.map(i=>[i.product_name,i.product_brand,i.quantity,'USD '+Number(i.unit_price).toLocaleString(),'USD '+Number(i.subtotal||i.unit_price*i.quantity).toLocaleString()]),
+    styles:{fillColor:[252,252,252],textColor:[60,60,60],fontSize:9,cellPadding:{top:5,right:6,bottom:5,left:6},lineWidth:0.2,lineColor:[230,230,230]},
+    headStyles:{fillColor:[212,43,43],textColor:[255,255,255],fontStyle:'bold',fontSize:7},
+    alternateRowStyles:{fillColor:[248,248,248]},
+    columnStyles:{0:{cellWidth:55,fontStyle:'bold'},1:{cellWidth:32,fontSize:8,textColor:[130,130,130]},2:{cellWidth:16,halign:'center',fontSize:12,fontStyle:'bold'},3:{cellWidth:28,halign:'right'},4:{cellWidth:30,halign:'right',fontStyle:'bold'}},
+    margin:{left:15,right:15}
+  });
+  // Total
+  const fy=doc.lastAutoTable.finalY+6;
+  doc.setFillColor(212,43,43);doc.roundedRect(15,fy,W-30,14,3,3,'F');
+  doc.setFontSize(8);doc.setTextColor(255,200,200);doc.setFont('helvetica','normal');
+  doc.text('TOTAL ESTIMADO',22,fy+6);
+  doc.setFontSize(7);doc.text('Sujeto a cotización USD oficial',22,fy+11);
+  doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(255,255,255);
+  const tt='USD '+Number(o.total_usd||0).toLocaleString();
+  doc.text(tt,W-20,fy+10,{align:'right'});
+  // Footer
+  doc.setFillColor(245,245,245);doc.rect(0,275,W,22,'F');
+  doc.setDrawColor(212,43,43);doc.setLineWidth(0.5);doc.line(0,275,W,275);
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(180,180,180);
+  doc.text('TORRENSEN',20,283);
+  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(160,160,160);
+  doc.text('Armenia 1660, Palermo CABA | Brasil 214, Gerli Bs As',20,289);
+  doc.text('Martín: 11 4430-0826 | Marcos: 11 6647-6471',120,283);
+  doc.save((o.order_number||'OP-Torrensen')+'.pdf');
+  toast('PDF descargado');
 }
 
 // PRODUCTS UNIFIED
