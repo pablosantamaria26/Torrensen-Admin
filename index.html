@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#0A0A0A">
+<meta name="theme-color" content="#F5F5F5">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Torrensen · Admin</title>
@@ -13,11 +13,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
-:root{--red:#D42B2B;--red-d:#A01F1F;--red-glow:rgba(212,43,43,0.12);--bg:#0A0A0A;--bg2:#111;--bg3:#181818;--bg4:#1E1E1E;--bg5:#242424;--border:rgba(255,255,255,0.06);--border-m:rgba(255,255,255,0.1);--border-red:rgba(212,43,43,0.35);--text:#F2F2F2;--muted:#A0A0A0;--dim:#6B6B6B;--green:#22C55E;--yellow:#D97706;--fluo:#BFFF00;--sidebar:252px;--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px)}
-html.light{--bg:#F5F5F5;--bg2:#FFF;--bg3:#ECECEC;--bg4:#E0E0E0;--bg5:#D4D4D4;--border:rgba(0,0,0,0.08);--border-m:rgba(0,0,0,0.12);--border-red:rgba(212,43,43,0.3);--text:#1A1A1A;--muted:#666;--dim:#999;--red-glow:rgba(212,43,43,0.08);color-scheme:light}
-html.light .loader-logo,html.light .brand{color:var(--text)}
-html.light #topbar{background:rgba(245,245,245,.94)}
-html.light .toast{background:var(--bg2)}
+:root{--red:#D42B2B;--red-d:#A01F1F;--red-glow:rgba(212,43,43,0.08);--bg:#F5F5F5;--bg2:#FFF;--bg3:#ECECEC;--bg4:#E0E0E0;--bg5:#D4D4D4;--border:rgba(0,0,0,0.08);--border-m:rgba(0,0,0,0.12);--border-red:rgba(212,43,43,0.3);--text:#1A1A1A;--muted:#666;--dim:#999;--green:#22C55E;--yellow:#D97706;--fluo:#16A34A;--sidebar:252px;--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+.loader-logo,.brand{color:var(--text)}
+.toast{background:var(--bg2)}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html{height:100%}body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);height:100%;min-height:100dvh;overflow-x:hidden;-webkit-font-smoothing:antialiased;transition:background .3s,color .3s}
 input,select,textarea,button{font-family:inherit}
@@ -41,12 +39,12 @@ input,select,textarea,button{font-family:inherit}
 #sidebar{width:var(--sidebar);background:var(--bg2);border-right:1px solid var(--border);position:fixed;top:0;left:0;bottom:0;z-index:100;overflow-y:auto;display:flex;flex-direction:column;padding-top:var(--safe-top);transition:transform .26s cubic-bezier(.32,.72,0,1)}
 .sidebar-logo{padding:24px 20px 16px;border-bottom:1px solid var(--border)}.sidebar-logo .brand{font-family:'Bebas Neue',cursive;font-size:26px;letter-spacing:2px;line-height:1}.sidebar-logo .brand em{color:var(--red);font-style:normal}.sidebar-logo .sub{font-size:9px;letter-spacing:3px;color:var(--dim);text-transform:uppercase;margin-top:3px}
 .nav-sect{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--dim);padding:14px 20px 5px}
-.nav-item{display:flex;align-items:center;gap:9px;padding:8px 20px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .15s}.nav-item:hover{color:var(--text);background:rgba(255,255,255,.02)}html.light .nav-item:hover{background:rgba(0,0,0,.03)}.nav-item.active{color:var(--red);border-left-color:var(--red);background:var(--red-glow)}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 20px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .15s}.nav-item:hover{color:var(--text);background:rgba(0,0,0,.03)}.nav-item.active{color:var(--red);border-left-color:var(--red);background:var(--red-glow)}
 .nav-ico{width:15px;text-align:center;font-size:13px}
 .sidebar-foot{padding:14px 20px calc(14px + var(--safe-bottom));border-top:1px solid var(--border);margin-top:auto;font-size:11px;color:var(--dim);line-height:1.7}.sidebar-foot .emp{font-size:12px;font-weight:600;color:var(--text)}
 .btn-logout{margin-top:8px;background:none;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:10px;padding:4px 10px;cursor:pointer}.btn-logout:hover{border-color:var(--red);color:var(--red)}
 #main{margin-left:var(--sidebar);min-height:100dvh;display:flex;flex-direction:column}
-#topbar{position:sticky;top:0;z-index:50;background:rgba(10,10,10,.94);backdrop-filter:blur(14px) saturate(1.4);border-bottom:1px solid var(--border);padding-top:var(--safe-top)}html.light #topbar{background:rgba(245,245,245,.94)}
+#topbar{position:sticky;top:0;z-index:50;background:rgba(245,245,245,.94);backdrop-filter:blur(14px) saturate(1.4);border-bottom:1px solid var(--border);padding-top:var(--safe-top)}
 .topbar-inner{height:54px;display:flex;align-items:center;gap:10px;padding:0 20px}
 .menu-btn{display:none;width:36px;height:36px;border:1px solid var(--border);border-radius:7px;background:none;color:var(--text);font-size:17px;cursor:pointer;align-items:center;justify-content:center;flex-shrink:0}
 .search-box{flex:1;max-width:380px;height:34px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;gap:8px;padding:0 12px}.search-box:focus-within{border-color:rgba(212,43,43,.4)}.search-box input{background:none;border:none;outline:none;color:var(--text);font-size:12px;width:100%}.search-box input::placeholder{color:var(--dim)}
@@ -91,7 +89,7 @@ input,select,textarea,button{font-family:inherit}
 <body>
 <div id="loader"><div class="loader-logo">TOR<em>REN</em>SEN</div><div class="loader-track"><div class="loader-fill"></div></div></div>
 <div id="pin-screen"><div class="pin-wrap"><div class="pin-logo">TOR<em>REN</em>SEN<small>Acceso Administración</small></div><div class="pin-title">Ingresá tu <em>PIN</em></div><div class="pin-dots" id="pin-dots"><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div></div><div class="pin-pad"><button class="pin-key" onclick="pinKey('1')">1</button><button class="pin-key" onclick="pinKey('2')">2</button><button class="pin-key" onclick="pinKey('3')">3</button><button class="pin-key" onclick="pinKey('4')">4</button><button class="pin-key" onclick="pinKey('5')">5</button><button class="pin-key" onclick="pinKey('6')">6</button><button class="pin-key" onclick="pinKey('7')">7</button><button class="pin-key" onclick="pinKey('8')">8</button><button class="pin-key" onclick="pinKey('9')">9</button><button class="pin-key fn" onclick="pinClear()">Borrar</button><button class="pin-key" onclick="pinKey('0')">0</button><button class="pin-key fn" onclick="pinDel()">⌫</button></div></div></div>
-<div id="app"><nav id="sidebar"><div class="sidebar-logo"><div class="brand">TOR<em>REN</em>SEN</div><div class="sub">Administración</div></div><div style="padding:10px 0;flex:1" id="sidebar-nav"></div><div class="sidebar-foot" id="side-foot"></div></nav><div id="main"><div id="topbar"><div class="topbar-inner"><button class="menu-btn" onclick="toggleSidebar()">☰</button><div class="search-box"><span style="color:var(--dim);font-size:13px">🔍</span><input type="text" placeholder="Buscar producto..." id="search-inp"></div><div class="topbar-right"><button class="theme-toggle" onclick="toggleTheme()">◑</button></div></div></div><div id="content"></div></div></div>
+<div id="app"><nav id="sidebar"><div class="sidebar-logo"><div class="brand">TOR<em>REN</em>SEN</div><div class="sub">Administración</div></div><div style="padding:10px 0;flex:1" id="sidebar-nav"></div><div class="sidebar-foot" id="side-foot"></div></nav><div id="main"><div id="topbar"><div class="topbar-inner"><button class="menu-btn" onclick="toggleSidebar()">☰</button><div class="search-box"><span style="color:var(--dim);font-size:13px">🔍</span><input type="text" placeholder="Buscar producto..." id="search-inp"></div><div class="topbar-right"></div></div></div><div id="content"></div></div></div>
 <div class="overlay" id="od-overlay" onclick="if(event.target===this)closeOverlay('od-overlay')"><div class="modal"><div class="modal-hdr"><div class="modal-ttl" id="od-title"></div><button class="btn-x" onclick="closeOverlay('od-overlay')">✕</button></div><div class="modal-body" id="od-body"></div></div></div>
 <div class="overlay" id="pe-overlay" onclick="if(event.target===this)closeOverlay('pe-overlay')"><div class="modal" style="max-width:500px"><div class="modal-hdr"><div class="modal-ttl" id="pe-title">EDITAR</div><button class="btn-x" onclick="closeOverlay('pe-overlay')">✕</button></div><div class="modal-body" id="pe-body"></div></div></div>
 <div class="confirm-bar" id="confirm-bar"><div class="cb-text" id="cb-text"></div><div class="cb-btns"><button class="cb-no" onclick="hideConfirm()">No</button><button class="cb-yes" id="cb-yes">Sí</button></div></div>
@@ -108,10 +106,6 @@ const EMAILJS_TEMPLATE_CONFIRM = 'template_dxsnhl7';
 emailjs.init(EMAILJS_PUBLIC_KEY);
 const{createClient}=supabase;const db=createClient(SUPA_URL,SUPA_KEY);
 let allProds=[],adminOrders=[],adminProfiles=[],editingProdId=null,pinInput='',adminStockSearch='',rtSetupDone=false,longPressTimer=null;
-
-function initTheme(){if(localStorage.getItem('torrensen_theme')==='light')document.documentElement.classList.add('light')}
-function toggleTheme(){document.documentElement.classList.toggle('light');localStorage.setItem('torrensen_theme',document.documentElement.classList.contains('light')?'light':'dark')}
-initTheme();
 
 async function init(){
   if(localStorage.getItem('torrensen_admin_auth')==='1'){
