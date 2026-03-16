@@ -158,10 +158,40 @@ async function validatePin(){
 let curSection='stock-live';
 function enterApp(){
   document.getElementById('loader').style.display='none';document.getElementById('pin-screen').style.display='none';document.getElementById('app').style.display='block';
-  document.getElementById('sidebar-nav').innerHTML='<div class="nav-sect">Principal</div><div class="nav-item active" data-section="stock-live" onclick="navTo(this)"><span class="nav-ico">📊</span> Stock en vivo</div><div class="nav-sect">Gestión</div><div class="nav-item" data-section="orders" onclick="navTo(this)"><span class="nav-ico">📋</span> Pedidos <span id="pending-bdg" style="margin-left:auto;background:var(--red);color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:none;align-items:center;justify-content:center;padding:0 3px">0</span></div><div class="nav-item" data-section="products" onclick="navTo(this)"><span class="nav-ico">⚙</span> Productos</div><div class="nav-item" data-section="dash" onclick="navTo(this)"><span class="nav-ico">📈</span> Resumen</div>';
+  const navEl=document.getElementById('sidebar-nav');
+  navEl.innerHTML=`
+    <div class="nav-sect">Principal</div>
+    <div class="nav-item active" id="nav-stock-live"><span class="nav-ico">📊</span> Stock en vivo</div>
+    <div class="nav-sect">Gestión</div>
+    <div class="nav-item" id="nav-orders"><span class="nav-ico">📋</span> Pedidos <span id="pending-bdg" style="margin-left:auto;background:var(--red);color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:none;align-items:center;justify-content:center;padding:0 3px">0</span></div>
+    <div class="nav-item" id="nav-products"><span class="nav-ico">⚙</span> Productos</div>
+    <div class="nav-item" id="nav-dash"><span class="nav-ico">📈</span> Resumen</div>`;
+  // Event delegation — one listener, no inline onclick
+  navEl.addEventListener('click',function(e){
+    const item=e.target.closest('.nav-item');
+    if(!item||!item.id)return;
+    const map={'nav-stock-live':'stock-live','nav-orders':'orders','nav-products':'products','nav-dash':'dash'};
+    const section=map[item.id];
+    if(!section)return;
+    e.preventDefault();e.stopPropagation();
+    goToSection(section);
+  });
   document.getElementById('side-foot').innerHTML='<div class="emp">Torrensen Admin</div><div style="margin-top:4px;font-size:10px"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--fluo);margin-right:3px;animation:blink 2.2s infinite"></span><span style="color:var(--fluo)">Tiempo real activo</span></div><button class="btn-logout" onclick="doLogout()">Cerrar sesión</button>';
   document.getElementById('search-inp').oninput=function(){adminStockSearch=this.value.toLowerCase().trim();if(curSection==='stock-live')renderStockLive();if(curSection==='products')renderProducts()};
-  updPendingBdg();curSection='stock-live';renderStockLive();
+  updPendingBdg();goToSection('stock-live');
+}
+function goToSection(section){
+  curSection=section;
+  // Update active nav
+  document.querySelectorAll('#sidebar-nav .nav-item').forEach(x=>x.classList.remove('active'));
+  const navId='nav-'+section;
+  const activeEl=document.getElementById(navId);
+  if(activeEl)activeEl.classList.add('active');
+  // Close sidebar on mobile
+  if(window.innerWidth<=768)document.getElementById('sidebar').classList.remove('open');
+  // Render
+  const renders={'stock-live':renderStockLive,'orders':renderOrders,'products':renderProducts,'dash':renderDash};
+  if(renders[section])renders[section]();
 }
 async function doLogout(){db.getChannels().forEach(c=>db.removeChannel(c));rtSetupDone=false;localStorage.removeItem('torrensen_admin_auth');await db.auth.signOut();location.reload()}
 async function loadProds(){const{data}=await db.from('products').select('*').order('sort_order');allProds=data||[]}
@@ -182,15 +212,6 @@ function setupRt(){
   db.channel('rt-oa').on('postgres_changes',{event:'*',schema:'public',table:'orders'},async()=>{await loadAdminData();if(curSection==='orders')renderOrders();if(curSection==='dash')renderDash()}).subscribe();
 }
 function ss(stock){return stock===0?'out':stock<=3?'low':'ok'}
-function navTo(el){
-  const section=el.dataset.section;if(!section)return;
-  curSection=section;
-  document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
-  el.classList.add('active');
-  if(window.innerWidth<=768)document.getElementById('sidebar').classList.remove('open');
-  const render={'stock-live':renderStockLive,orders:renderOrders,products:renderProducts,dash:renderDash};
-  if(render[section])render[section]();
-}
 
 // STOCK
 function renderStockLive(){
@@ -259,6 +280,12 @@ function downloadOrderPDF(){
   doc.text(o.order_number||'OP',W-20,22,{align:'right'});
   doc.setFontSize(9);doc.setTextColor(255,200,200);
   doc.text(fecha,W-20,30,{align:'right'});
+  // Status badge
+  const statusText=o.status==='confirmed'?'CONFIRMADO':o.status==='partial'?'PARCIAL':'PENDIENTE';
+  const statusColor=o.status==='confirmed'?[34,197,94]:o.status==='partial'?[217,119,6]:[212,43,43];
+  doc.setFillColor(...statusColor);doc.roundedRect(W-20-30,34,30,8,2,2,'F');
+  doc.setFontSize(6);doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');
+  doc.text(statusText,W-20-15,39,{align:'center'});
   // Client
   const cy=52;
   doc.setFillColor(248,248,248);doc.roundedRect(15,cy,W-30,26,3,3,'F');
@@ -293,6 +320,11 @@ function downloadOrderPDF(){
   doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(255,255,255);
   const tt='USD '+Number(o.total_usd||0).toLocaleString();
   doc.text(tt,W-20,fy+10,{align:'right'});
+  // Notes
+  const ny=fy+20;
+  doc.setFillColor(248,248,248);doc.roundedRect(15,ny,W-30,10,2,2,'F');
+  doc.setFontSize(7);doc.setTextColor(160,160,160);doc.setFont('helvetica','normal');
+  doc.text('Precios estimados sujetos a cotización USD oficial. Documento generado desde Torrensen Admin.',20,ny+6);
   // Footer
   doc.setFillColor(245,245,245);doc.rect(0,275,W,22,'F');
   doc.setDrawColor(212,43,43);doc.setLineWidth(0.5);doc.line(0,275,W,275);
