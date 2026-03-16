@@ -26,6 +26,14 @@ input,select,textarea,button{font-family:inherit}
 @keyframes fill{from{width:0}to{width:100%}}
 @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loading-app{position:fixed;inset:0;z-index:999;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+#loading-app.show{display:flex}
+.la-logo{font-family:'Bebas Neue',cursive;font-size:36px;letter-spacing:3px;color:var(--text)}
+.la-logo em{color:var(--red);font-style:normal}
+.la-spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--red);border-radius:50%;animation:spin .8s linear infinite}
+.la-text{font-size:11px;color:var(--dim);letter-spacing:1px;animation:pulse 1.5s ease infinite}
 .theme-toggle{width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--muted);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .theme-toggle:hover{border-color:var(--red);color:var(--text)}
 #loader{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px}
@@ -90,6 +98,7 @@ input,select,textarea,button{font-family:inherit}
 </head>
 <body>
 <div id="loader"><div class="loader-logo">TOR<em>REN</em>SEN</div><div class="loader-track"><div class="loader-fill"></div></div></div>
+<div id="loading-app"><div class="la-logo">TOR<em>REN</em>SEN</div><div class="la-spinner"></div><div class="la-text">Cargando datos...</div></div>
 <div id="pin-screen"><div class="pin-wrap"><div class="pin-logo">TOR<em>REN</em>SEN<small>Acceso Administración</small></div><div class="pin-title">Ingresá tu <em>PIN</em></div><div class="pin-dots" id="pin-dots"><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div></div><div class="pin-pad"><button class="pin-key" onclick="pinKey('1')">1</button><button class="pin-key" onclick="pinKey('2')">2</button><button class="pin-key" onclick="pinKey('3')">3</button><button class="pin-key" onclick="pinKey('4')">4</button><button class="pin-key" onclick="pinKey('5')">5</button><button class="pin-key" onclick="pinKey('6')">6</button><button class="pin-key" onclick="pinKey('7')">7</button><button class="pin-key" onclick="pinKey('8')">8</button><button class="pin-key" onclick="pinKey('9')">9</button><button class="pin-key fn" onclick="pinClear()">Borrar</button><button class="pin-key" onclick="pinKey('0')">0</button><button class="pin-key fn" onclick="pinDel()">⌫</button></div></div></div>
 <div id="app"><nav id="sidebar"><div class="sidebar-logo"><div class="brand">TOR<em>REN</em>SEN</div><div class="sub">Administración</div></div><div style="padding:10px 0;flex:1" id="sidebar-nav"></div><div class="sidebar-foot" id="side-foot"></div></nav><div id="main"><div id="topbar"><div class="topbar-inner"><button class="menu-btn" onclick="toggleSidebar()">☰</button><div class="search-box"><span style="color:var(--dim);font-size:13px">🔍</span><input type="text" placeholder="Buscar producto..." id="search-inp"></div><div class="topbar-right"></div></div></div><div id="content"></div></div></div>
 <div class="overlay" id="od-overlay" onclick="if(event.target===this)closeOverlay('od-overlay')"><div class="modal"><div class="modal-hdr"><div class="modal-ttl" id="od-title"></div><button class="btn-x" onclick="closeOverlay('od-overlay')">✕</button></div><div class="modal-body" id="od-body"></div></div></div>
@@ -111,9 +120,17 @@ let allProds=[],adminOrders=[],adminProfiles=[],editingProdId=null,pinInput='',a
 
 async function init(){
   if(localStorage.getItem('torrensen_admin_auth')==='1'){
+    document.getElementById('loader').style.display='none';
+    const la=document.getElementById('loading-app');la.classList.add('show');
     let{data:{session}}=await db.auth.getSession();
-    if(!session){const{error}=await db.auth.signInWithPassword({email:ADMIN_EMAIL,password:ADMIN_PASS});if(error){showPinScreen();return}}
-    await loadProds();setupRt();await loadAdminData();enterApp();return;
+    if(!session){const{error}=await db.auth.signInWithPassword({email:ADMIN_EMAIL,password:ADMIN_PASS});if(error){la.classList.remove('show');showPinScreen();return}}
+    la.querySelector('.la-text').textContent='Sincronizando stock...';
+    await loadProds();
+    la.querySelector('.la-text').textContent='Cargando pedidos...';
+    await loadAdminData();setupRt();
+    la.querySelector('.la-text').textContent='Listo';
+    setTimeout(()=>{la.classList.remove('show');enterApp()},300);
+    return;
   }
   showPinScreen();
 }
@@ -124,18 +141,27 @@ function pinClear(){pinInput='';updatePinDots()}
 function updatePinDots(){document.querySelectorAll('#pin-dots .pin-dot').forEach((d,i)=>{d.classList.toggle('filled',i<pinInput.length);d.classList.remove('err')})}
 async function validatePin(){
   if(pinInput===ADMIN_PIN){
+    document.getElementById('pin-screen').style.display='none';
+    const la=document.getElementById('loading-app');la.classList.add('show');
     const{error}=await db.auth.signInWithPassword({email:ADMIN_EMAIL,password:ADMIN_PASS});
-    if(error){toast('Error autenticación',true);pinInput='';updatePinDots();return}
-    localStorage.setItem('torrensen_admin_auth','1');document.getElementById('pin-screen').style.display='none';
-    await loadProds();setupRt();await loadAdminData();enterApp();
+    if(error){la.classList.remove('show');toast('Error autenticación',true);showPinScreen();return}
+    localStorage.setItem('torrensen_admin_auth','1');
+    la.querySelector('.la-text').textContent='Sincronizando stock...';
+    await loadProds();
+    la.querySelector('.la-text').textContent='Cargando pedidos...';
+    await loadAdminData();
+    setupRt();
+    la.querySelector('.la-text').textContent='Listo';
+    setTimeout(()=>{la.classList.remove('show');enterApp()},400);
   }else{document.querySelectorAll('#pin-dots .pin-dot').forEach(d=>d.classList.add('err'));setTimeout(()=>{pinInput='';updatePinDots()},500)}
 }
+let curSection='stock-live';
 function enterApp(){
   document.getElementById('loader').style.display='none';document.getElementById('pin-screen').style.display='none';document.getElementById('app').style.display='block';
-  document.getElementById('sidebar-nav').innerHTML='<div class="nav-sect">Principal</div><div class="nav-item active" onclick="navAdmin(\'stock-live\',this)"><span class="nav-ico">📊</span> Stock en vivo</div><div class="nav-sect">Gestión</div><div class="nav-item" onclick="navAdmin(\'orders\',this)"><span class="nav-ico">📋</span> Pedidos <span id="pending-bdg" style="margin-left:auto;background:var(--red);color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:none;align-items:center;justify-content:center;padding:0 3px">0</span></div><div class="nav-item" onclick="navAdmin(\'products\',this)"><span class="nav-ico">⚙</span> Productos</div><div class="nav-item" onclick="navAdmin(\'dash\',this)"><span class="nav-ico">📈</span> Resumen</div>';
+  document.getElementById('sidebar-nav').innerHTML='<div class="nav-sect">Principal</div><div class="nav-item active" data-section="stock-live" onclick="navTo(this)"><span class="nav-ico">📊</span> Stock en vivo</div><div class="nav-sect">Gestión</div><div class="nav-item" data-section="orders" onclick="navTo(this)"><span class="nav-ico">📋</span> Pedidos <span id="pending-bdg" style="margin-left:auto;background:var(--red);color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:none;align-items:center;justify-content:center;padding:0 3px">0</span></div><div class="nav-item" data-section="products" onclick="navTo(this)"><span class="nav-ico">⚙</span> Productos</div><div class="nav-item" data-section="dash" onclick="navTo(this)"><span class="nav-ico">📈</span> Resumen</div>';
   document.getElementById('side-foot').innerHTML='<div class="emp">Torrensen Admin</div><div style="margin-top:4px;font-size:10px"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--fluo);margin-right:3px;animation:blink 2.2s infinite"></span><span style="color:var(--fluo)">Tiempo real activo</span></div><button class="btn-logout" onclick="doLogout()">Cerrar sesión</button>';
-  document.getElementById('search-inp').oninput=function(){adminStockSearch=this.value.toLowerCase().trim();const s=document.getElementById('content').dataset?.section;if(s==='stock-live')renderStockLive();if(s==='products')renderProducts()};
-  updPendingBdg();renderStockLive();
+  document.getElementById('search-inp').oninput=function(){adminStockSearch=this.value.toLowerCase().trim();if(curSection==='stock-live')renderStockLive();if(curSection==='products')renderProducts()};
+  updPendingBdg();curSection='stock-live';renderStockLive();
 }
 async function doLogout(){db.getChannels().forEach(c=>db.removeChannel(c));rtSetupDone=false;localStorage.removeItem('torrensen_admin_auth');await db.auth.signOut();location.reload()}
 async function loadProds(){const{data}=await db.from('products').select('*').order('sort_order');allProds=data||[]}
@@ -151,25 +177,33 @@ function setupRt(){
     if(evt==='INSERT'){if(!allProds.find(x=>x.id===prod.id))allProds.push(prod)}
     else if(evt==='UPDATE'){const i=allProds.findIndex(x=>x.id===prod.id);if(i!==-1)allProds[i]={...allProds[i],...prod};else allProds.push(prod)}
     else if(evt==='DELETE'){allProds=allProds.filter(x=>x.id!==(p.old?.id||prod?.id))}
-    const s=document.getElementById('content').dataset?.section;if(s==='stock-live')renderStockLive();if(s==='products')renderProducts();if(s==='dash')renderDash();
+    if(curSection==='stock-live')renderStockLive();if(curSection==='products')renderProducts();if(curSection==='dash')renderDash();
   }).subscribe();
-  db.channel('rt-oa').on('postgres_changes',{event:'*',schema:'public',table:'orders'},async()=>{await loadAdminData();const s=document.getElementById('content').dataset?.section;if(s==='orders')renderOrders();if(s==='dash')renderDash()}).subscribe();
+  db.channel('rt-oa').on('postgres_changes',{event:'*',schema:'public',table:'orders'},async()=>{await loadAdminData();if(curSection==='orders')renderOrders();if(curSection==='dash')renderDash()}).subscribe();
 }
 function ss(stock){return stock===0?'out':stock<=3?'low':'ok'}
-function navAdmin(section,el){document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));el.classList.add('active');document.getElementById('content').dataset.section=section;if(window.innerWidth<=768)document.getElementById('sidebar').classList.remove('open');({['stock-live']:renderStockLive,orders:renderOrders,products:renderProducts,dash:renderDash})[section]?.()}
+function navTo(el){
+  const section=el.dataset.section;if(!section)return;
+  curSection=section;
+  document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
+  el.classList.add('active');
+  if(window.innerWidth<=768)document.getElementById('sidebar').classList.remove('open');
+  const render={'stock-live':renderStockLive,orders:renderOrders,products:renderProducts,dash:renderDash};
+  if(render[section])render[section]();
+}
 
 // STOCK
 function renderStockLive(){
   let prods=allProds.filter(p=>p.active!==false);if(adminStockSearch)prods=prods.filter(p=>p.name.toLowerCase().includes(adminStockSearch)||(p.brand_name||'').toLowerCase().includes(adminStockSearch));
   const total=prods.reduce((s,p)=>s+p.stock,0),ok=prods.filter(p=>p.stock>3).length,low=prods.filter(p=>p.stock>0&&p.stock<=3).length,out=prods.filter(p=>p.stock===0).length,mx=Math.max(...prods.map(p=>p.stock),1);
-  document.getElementById('content').dataset.section='stock-live';
+  
   document.getElementById('content').innerHTML=`<div class="page-hdr"><div><div class="page-title">STOCK <em>EN VIVO</em></div><div class="page-sub"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--fluo);margin-right:4px;animation:blink 2.2s infinite"></span>Tiempo real · ${prods.length} productos</div></div></div><div class="stock-dashboard"><div class="stock-summary"><div class="stock-summary-card"><div class="ssc-val">${total}</div><div class="ssc-lbl">Unidades totales</div></div><div class="stock-summary-card"><div class="ssc-val" style="color:var(--fluo)">${ok}</div><div class="ssc-lbl">En stock</div></div><div class="stock-summary-card ${low?'alert':''}"><div class="ssc-val" style="color:var(--yellow)">${low}</div><div class="ssc-lbl">Stock bajo</div></div><div class="stock-summary-card ${out?'alert':''}"><div class="ssc-val" style="color:var(--red)">${out}</div><div class="ssc-lbl">Agotados</div></div></div><div class="stock-grid">${prods.map((p,i)=>{const s=ss(p.stock),pct=Math.min((p.stock/mx)*100,100);return`<div class="stock-grid-card ${s}" style="animation:fadeUp .2s ${i*.02}s both"><div class="sgc-top"><div class="sgc-ico">${p.icon_emoji||'📦'}</div><div class="sgc-info"><div class="sgc-name">${p.name}</div><div class="sgc-brand">${p.brand_name} · ${p.type}</div></div></div><div class="sgc-stock"><div class="sgc-qty ${s}">${p.stock}<span style="font-family:'DM Sans';font-size:10px;color:var(--dim);font-weight:400;margin-left:2px">u</span></div><div class="sgc-bar"><div class="sgc-bar-fill ${s}" style="width:${pct}%"></div></div></div><div class="sgc-edit"><input type="number" id="slv-${p.id}" value="${p.stock}" min="0"><button onclick="qkStock('${p.id}')">✓</button></div></div>`}).join('')}</div></div>`;
 }
 async function qkStock(id){const el=document.getElementById(`slv-${id}`);if(!el)return;const v=parseInt(el.value);if(isNaN(v)||v<0){toast('Inválido',true);return}const{error}=await db.from('products').update({stock:v}).eq('id',id);if(error){toast('Error BD',true);return}const i=allProds.findIndex(p=>p.id===id);if(i!==-1)allProds[i].stock=v;toast('Stock OK')}
 
 // ORDERS
 function renderOrders(){
-  document.getElementById('content').dataset.section='orders';
+  
   const pending=adminOrders.filter(o=>o.status==='pending'),confirmed=adminOrders.filter(o=>['confirmed','dispatched'].includes(o.status));
   document.getElementById('content').innerHTML=`<div class="page-hdr"><div class="page-title">PEDIDOS <em>RECIBIDOS</em></div></div>${pending.length?`<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:8px">⚡ PENDIENTES (${pending.length})</div><div class="order-list" style="margin-bottom:20px">${pending.map(o=>orderCard(o,false)).join('')}</div>`:'<div style="padding:20px;text-align:center;color:var(--dim);font-size:12px;margin-bottom:20px">Sin pedidos pendientes</div>'}${confirmed.length?`<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:8px">✅ CONFIRMADOS (${confirmed.length})</div><div class="order-list">${confirmed.map(o=>orderCard(o,true)).join('')}</div>`:''}`;
 }
@@ -274,7 +308,7 @@ function downloadOrderPDF(){
 // PRODUCTS UNIFIED
 function renderProducts(){
   let prods=[...allProds];if(adminStockSearch)prods=prods.filter(p=>p.name.toLowerCase().includes(adminStockSearch)||(p.brand_name||'').toLowerCase().includes(adminStockSearch));
-  document.getElementById('content').dataset.section='products';
+  
   document.getElementById('content').innerHTML=`<div class="page-hdr"><div class="page-title">GESTIÓN <em>PRODUCTOS</em></div><button class="btn-sm btn-sm-r" onclick="openNewProd()">+ Nuevo</button></div><div class="prod-admin-grid">${prods.map((p,i)=>`<div class="pa-card${p.active?'':' inactive'}" style="animation:fadeUp .2s ${i*.02}s both"><div class="pa-hdr"><div class="pa-ico">${p.icon_emoji||'📦'}</div><div class="pa-info"><div class="pa-name">${p.name}</div><div class="pa-brand">${p.brand_name} · ${p.type}</div></div><label class="pa-toggle"><input type="checkbox" ${p.active?'checked':''} onchange="toggleProd('${p.id}',${p.active})"><span class="ts-track"></span></label></div><div class="pa-fields"><div class="pa-field"><label>Stock</label><input type="number" id="ps-${p.id}" value="${p.stock}" min="0"></div><div class="pa-field"><label>Público</label><input type="number" id="pp-${p.id}" value="${p.price_publico||''}" placeholder="—"></div><div class="pa-field"><label>x5</label><input type="number" id="p5-${p.id}" value="${p.price_x5||''}" placeholder="—"></div><div class="pa-field"><label>x10</label><input type="number" id="p10-${p.id}" value="${p.price_x10||''}" placeholder="—"></div><div class="pa-field"><label>x15</label><input type="number" id="p15-${p.id}" value="${p.price_x15||''}" placeholder="—"></div><div class="pa-field"><label>x20</label><input type="number" id="p20-${p.id}" value="${p.price_x20||''}" placeholder="—"></div></div><div class="pa-actions"><button class="btn-sm btn-sm-o" onclick="openEditProd('${p.id}')">✏ Info</button><button class="btn-sm btn-sm-g" onclick="saveProdCard('${p.id}')">✓ Guardar</button></div></div>`).join('')}</div>`;
 }
 async function saveProdCard(id){const upd={stock:parseInt(document.getElementById(`ps-${id}`)?.value)||0,price_publico:parseFloat(document.getElementById(`pp-${id}`)?.value)||null,price_x5:parseFloat(document.getElementById(`p5-${id}`)?.value)||null,price_x10:parseFloat(document.getElementById(`p10-${id}`)?.value)||null,price_x15:parseFloat(document.getElementById(`p15-${id}`)?.value)||null,price_x20:parseFloat(document.getElementById(`p20-${id}`)?.value)||null};const{error}=await db.from('products').update(upd).eq('id',id);if(error){toast('Error BD',true);return}const i=allProds.findIndex(p=>p.id===id);if(i!==-1)allProds[i]={...allProds[i],...upd};toast('Guardado')}
@@ -311,7 +345,7 @@ async function deleteProd(id){await db.from('products').update({active:false}).e
 // DASH
 function renderDash(){
   const conf=adminOrders.filter(o=>['confirmed','dispatched'].includes(o.status)),pend=adminOrders.filter(o=>o.status==='pending'),rev=conf.reduce((s,o)=>s+Number(o.total_usd||0),0),crit=allProds.filter(p=>p.active&&p.stock<=3);
-  document.getElementById('content').dataset.section='dash';
+  
   document.getElementById('content').innerHTML=`<div class="page-hdr"><div class="page-title">RESUMEN <em>GENERAL</em></div></div><div class="stat-grid"><div class="stat-box hi"><div class="stat-ico">📋</div><div class="stat-lbl">Pendientes</div><div class="stat-val">${pend.length}</div></div><div class="stat-box"><div class="stat-ico">✅</div><div class="stat-lbl">Confirmados</div><div class="stat-val">${conf.length}</div></div><div class="stat-box"><div class="stat-ico">💵</div><div class="stat-lbl">Facturación</div><div class="stat-val" style="font-size:20px">USD ${rev.toLocaleString()}</div></div><div class="stat-box"><div class="stat-ico">⚠️</div><div class="stat-lbl">Stock crítico</div><div class="stat-val" style="color:var(--yellow)">${crit.length}</div></div></div>`;
 }
 
